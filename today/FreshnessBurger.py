@@ -124,9 +124,6 @@ class FreshnessBurger:
 
                 page_num += 1
 
-        # # 実行確認用
-        # print(FreshnessBurger._result_df)
-        FreshnessBurger._result_df.to_csv('./csv/FreshnessBurger.csv')
         return FreshnessBurger._result_df
 
 

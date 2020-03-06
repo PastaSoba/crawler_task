@@ -12,13 +12,13 @@ import sys
 import re
 # import chromedriver_binary
 import pathlib
-import threading
 current_dir = pathlib.Path(__file__).resolve().parent
 sys.path.append(str(current_dir) + '/../')
 
 
-class Genkido:
-    baseurl = "https://genkido-s.com/search/"
+class MasterPiece:
+    baseurl = ["http://masterpiece-shop.jp/shop",
+               "http://masterpiece-shop.jp/shop2"]
     _result_df = pd.DataFrame(columns=['store_name', 'address'])
 
     @staticmethod
@@ -34,8 +34,8 @@ class Genkido:
             住所
         """
         tmp_se = pd.Series([storeName, storeAddress],
-                           index=Genkido._result_df.columns)
-        Genkido._result_df = Genkido._result_df.append(
+                           index=MasterPiece._result_df.columns)
+        MasterPiece._result_df = MasterPiece._result_df.append(
             tmp_se, ignore_index=True)
 
     @staticmethod
@@ -95,58 +95,30 @@ class Genkido:
         return soup
 
     @staticmethod
-    def miniworker(semaphore, url, result_dic):
-        """
-        urlとresult辞書を読み込み、urlから得られた情報をresultに書き込んでいく
-        param
-        -----
-        semaphore:threading.Semaphore
-            子スレッドのためのセマフォ（過剰な多重起動を防ぐ）
-        url:str
-            読み込みたいページのURL
-        result_dic([storeName] = storeAddress))
-            結果を書き込むべき辞書
-        """
-        with semaphore:
-            page = Genkido._OpenURLWithBeautifulSoup(url)
-
-            storeName = page.find(
-                "div", {"class": "ttlbx clearfix"}).find("h3").text
-            storeAddress = page.find("div", {"class": "databox"}).find(
-                "p", {"class": "tx"}).text
-
-            storeAddress = re.sub("〒[0-9]{3}-[0-9]{4}", "", storeAddress)
-
-            Genkido._AppendItemToDataFrame(storeName, storeAddress)
-
-    @staticmethod
     def getStoreInfo():
-        page = Genkido._OpenURLWithBeautifulSoup(Genkido.baseurl)
+        for url in MasterPiece.baseurl:
+            page = MasterPiece._OpenURLWithBeautifulSoup(url)
 
-        workers = []
-        result = {}
-        semaphore = threading.Semaphore(15)
-        stores = page.find("div", {"class": "searchbox com_pdbx_s"}).find_all(
-            "div", {"class": "srcbx"})
+            stores = page.find(
+                "section", {"class": "post-inner"}).find_all("div", {"class": "rightbox-a"})
 
-        for store in stores:
-            store_link = "https://genkido-s.com" + store.find("a").get("href")
-            workers.append(threading.Thread(
-                target=Genkido.miniworker, args=(semaphore, store_link, result)))
+            for store in stores:
+                storeName = store.find("h3", {"class": "ttl-b"}).text
+                storeAddress = store.find(
+                    "dl", {"class": "store"}).find("dd").text
 
-        # ワーカーを順次起動させる
-        for worker in workers:
-            worker.start()
+                storeName = "マスターピース " + \
+                    re.sub("[ \n\r\t\f]", "", storeName)
+                storeAddress = re.sub(
+                    "(〒[0-9]{3}-[0-9]{4}|[ \r\n\t\f])", "", storeAddress)
 
-        # ワーカーの動作結果をまとめる
-        for worker in workers:
-            worker.join()
+                MasterPiece._AppendItemToDataFrame(storeName, storeAddress)
 
-        return Genkido._result_df
+        return MasterPiece._result_df
 
 
 if __name__ == "__main__":
-    df = Genkido.getStoreInfo()
+    df = MasterPiece.getStoreInfo()
     # brand_id = UpdateDB.getBrandId(os.path.basename(__file__))
     # df['brand_id'] = brand_id
     # new_brand_df = df.rename(columns={0: 'store_name', 1: 'address'})

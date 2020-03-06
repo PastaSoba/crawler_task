@@ -117,9 +117,6 @@ class ChelseaNewYork:
             except Exception as err:
                 return
 
-        # # 実行確認用
-        # print(ChelseaNewYork._result_df)
-        ChelseaNewYork._result_df.to_csv('./csv/ChelseaNewYork.csv')
         return ChelseaNewYork._result_df
 
 
